@@ -2,12 +2,12 @@
 
 namespace GabyQuiles\Auth\Providers;
 
-
 use GabyQuiles\Auth\Loaders\JwkKeyLoader;
 use GabyQuiles\Auth\Signer\SignerFactory;
 use Lcobucci\Clock\SystemClock;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Encoding\MicrosecondBasedDateConversion;
+use Lcobucci\JWT\Signer\Hmac;
 use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
@@ -24,7 +24,6 @@ use Lexik\Bundle\JWTAuthenticationBundle\Signature\LoadedJWS;
 //TODO: Move to its own bundle
 class AwsJwsProvider implements JWSProviderInterface
 {
-
     /**
      * @var RawKeyLoader
      */
@@ -106,13 +105,24 @@ class AwsJwsProvider implements JWSProviderInterface
         }
 
         $payload = [];
-        foreach ($jws->getClaims() as $claim) {
-            $payload[$claim->getName()] = $claim->getValue();
+
+        foreach ($jws->claims()->all() as $name => $value) {
+            if ($value instanceof \DateTimeInterface) {
+                $value = $value->getTimestamp();
+            }
+            $payload[$name] = $value;
         }
 
-        return new LoadedJWS($payload, $this->verify($jws), null !== $this->ttl, $jws->getHeaders(), $this->clockSkew);
-    }
+        $jws = new LoadedJWS(
+            $payload,
+            $this->verify($jws),
+            null !== $this->ttl,
+            $jws->headers()->all(),
+            $this->clockSkew
+        );
 
+        return $jws;
+    }
 
     private function verify(Token $jwt)
     {
