@@ -34,7 +34,7 @@ class JwkKeyLoader
     public function loadKey($kid)
     {
         $jwks = $this->cache->get('gaby_quiles_auth_jws.jwk_keys', function ($item) {
-            $item->expiresAfter(null);
+            $item->expiresAfter(\DateInterval::createFromDateString('1 day'));
             return $this->jwkFetcher->getJwk();
         });
         $keys = [];
